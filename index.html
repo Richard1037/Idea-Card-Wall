@@ -1,0 +1,2161 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>灵感卡片墙</title>
+<style>
+/* ========================================
+   Reset & Base
+   ======================================== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg-primary: #0f0f14;
+  --bg-card: #1a1a24;
+  --bg-card-glass: rgba(255,255,255,0.05);
+  --border-card: rgba(255,255,255,0.08);
+  --border-hover: rgba(255,255,255,0.16);
+  --text-primary: #e8e8ed;
+  --text-secondary: #909098;
+  --text-muted: #5c5c66;
+  --accent: #5eead4;
+  --accent-dim: rgba(94,234,212,0.12);
+  --accent-hover: #7ff5e2;
+  --danger: #f87171;
+  --danger-hover: #fca5a5;
+  --shadow-card: 0 8px 32px rgba(0,0,0,0.4);
+  --shadow-lg: 0 16px 48px rgba(0,0,0,0.6);
+  --radius: 16px;
+  --radius-sm: 10px;
+  --radius-xs: 6px;
+  --transition: 0.3s ease;
+  --font: "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", sans-serif;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--font);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ========================================
+   Scanner Background (扫描线效果)
+   ======================================== */
+.scanner-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  background: linear-gradient(135deg, #0a0015 0%, #120020 50%, #0a0015 100%); /* 深色底色配合扫描线效果 */
+}
+
+.scanner-bg canvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+/* ========================================
+   App Layout
+   ======================================== */
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  position: relative;
+  z-index: 1;
+}
+
+/* ========================================
+   Top Control Bar
+   ======================================== */
+.control-bar {
+  padding: 16px 24px 0;
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.control-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.control-row:last-child { margin-bottom: 0; }
+
+/* Search */
+.search-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 200px;
+  max-width: 360px;
+}
+
+.search-wrap .icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-size: 14px;
+  pointer-events: none;
+}
+
+.search-input {
+  width: 100%;
+  height: 40px;
+  padding: 0 14px 0 38px;
+  background: var(--bg-card-glass);
+  border: 1px solid var(--border-card);
+  border-radius: 20px;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-family: var(--font);
+  outline: none;
+  transition: var(--transition);
+}
+
+.search-input::placeholder { color: var(--text-muted); }
+.search-input:focus {
+  border-color: var(--accent);
+  background: rgba(94,234,212,0.05);
+}
+
+/* Tag Bar */
+.tag-bar {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.tag-bar::-webkit-scrollbar { display: none; }
+
+.tag-chip {
+  flex-shrink: 0;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  cursor: pointer;
+  background: var(--bg-card-glass);
+  border: 1px solid var(--border-card);
+  color: var(--text-secondary);
+  transition: var(--transition);
+  white-space: nowrap;
+  user-select: none;
+}
+
+.tag-chip:hover { border-color: var(--border-hover); color: var(--text-primary); }
+.tag-chip.active {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Sort & Speed */
+.sort-select, .speed-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.sort-select select {
+  background: var(--bg-card-glass);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-xs);
+  color: var(--text-primary);
+  padding: 5px 8px;
+  font-size: 13px;
+  font-family: var(--font);
+  cursor: pointer;
+  outline: none;
+}
+
+.speed-btn {
+  padding: 5px 12px;
+  border-radius: var(--radius-xs);
+  font-size: 13px;
+  cursor: pointer;
+  background: var(--bg-card-glass);
+  border: 1px solid var(--border-card);
+  color: var(--text-secondary);
+  font-family: var(--font);
+  transition: var(--transition);
+}
+
+.speed-btn:hover { border-color: var(--border-hover); }
+.speed-btn.active {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-family: var(--font);
+  cursor: pointer;
+  border: none;
+  transition: var(--transition);
+  white-space: nowrap;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #0a0a0f;
+  font-weight: 600;
+}
+
+.btn-primary:hover { background: var(--accent-hover); }
+
+.btn-ghost {
+  background: var(--bg-card-glass);
+  border: 1px solid var(--border-card);
+  color: var(--text-primary);
+}
+
+.btn-ghost:hover { border-color: var(--border-hover); }
+
+.btn-danger {
+  background: var(--danger);
+  color: #0a0a0f;
+  font-weight: 600;
+}
+
+.btn-danger:hover { background: var(--danger-hover); }
+
+.btn-sm { padding: 5px 12px; font-size: 13px; }
+
+/* ========================================
+   Conveyor Belt
+   ======================================== */
+.conveyor-wrap {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  min-height: 0;
+}
+
+.conveyor-track {
+  display: flex;
+  gap: 20px;
+  padding: 24px;
+  height: 100%;
+  align-items: center;
+  will-change: transform;
+}
+
+/* ========================================
+   Card
+   ======================================== */
+.card {
+  flex-shrink: 0;
+  width: 360px;
+  height: 260px;
+  border-radius: var(--radius);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  cursor: grab;
+  position: relative;
+  border: 1px solid var(--border-card);
+  transition: transform var(--transition), border-color var(--transition), box-shadow var(--transition);
+  overflow: hidden;
+  user-select: none;
+}
+
+.card:active {
+  cursor: grabbing;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius);
+  background: var(--bg-card-glass);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: -1;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  border-color: var(--border-hover);
+  box-shadow: var(--shadow-lg);
+}
+
+.card-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 10px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.5;
+}
+
+.card-content {
+  font-size: 15px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  flex: 1;
+}
+
+.card-source {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card-tags {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.card-tag {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(94,234,212,0.1);
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+/* Search highlight */
+mark {
+  background: rgba(94,234,212,0.3);
+  color: var(--accent);
+  border-radius: 2px;
+  padding: 0 2px;
+}
+
+/* ========================================
+   Empty State
+   ======================================== */
+.empty-state {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  gap: 12px;
+  pointer-events: none;
+}
+
+.empty-state .icon { font-size: 48px; opacity: 0.3; }
+.empty-state .text { font-size: 15px; }
+
+/* ========================================
+   Modal Overlay
+   ======================================== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  animation: fadeIn 0.25s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal {
+  background: rgba(26,26,36,0.95);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius);
+  padding: 28px;
+  max-width: 520px;
+  width: 90vw;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+  animation: scaleIn 0.25s ease-out;
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.modal-header h3 {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.modal-close {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--border-card);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition);
+}
+
+.modal-close:hover {
+  border-color: var(--border-hover);
+  color: var(--text-primary);
+}
+
+/* Confirm Modal */
+.confirm-modal {
+  max-width: 380px;
+  text-align: center;
+}
+
+.confirm-modal p {
+  color: var(--text-secondary);
+  margin-bottom: 24px;
+  line-height: 1.6;
+}
+
+.confirm-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+/* ========================================
+   Form
+   ======================================== */
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.form-group label .required {
+  color: var(--danger);
+  margin-left: 2px;
+}
+
+.form-input, .form-textarea {
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--bg-card-glass);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-family: var(--font);
+  outline: none;
+  transition: var(--transition);
+  resize: vertical;
+}
+
+.form-input:focus, .form-textarea:focus {
+  border-color: var(--accent);
+}
+
+.form-textarea { min-height: 100px; }
+
+/* Tags input */
+.tags-input-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px;
+  background: var(--bg-card-glass);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-sm);
+  min-height: 40px;
+  align-items: center;
+  cursor: text;
+}
+
+.tags-input-wrap:focus-within { border-color: var(--accent); }
+
+.tag-input-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-size: 13px;
+}
+
+.tag-input-item .remove-tag {
+  cursor: pointer;
+  font-size: 14px;
+  opacity: 0.6;
+  transition: var(--transition);
+}
+
+.tag-input-item .remove-tag:hover { opacity: 1; }
+
+.tag-input-inner {
+  flex: 1;
+  min-width: 80px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-family: var(--font);
+  outline: none;
+  padding: 4px 2px;
+}
+
+/* Color picker */
+.color-picker-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.color-picker-group input[type="color"] {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  background: transparent;
+  padding: 3px;
+}
+
+.color-picker-group input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+.color-picker-group input[type="color"]::-webkit-color-swatch { border-radius: 3px; border: none; }
+
+.gradient-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.toggle-switch {
+  position: relative;
+  width: 40px;
+  height: 22px;
+  cursor: pointer;
+}
+
+.toggle-switch input { display: none; }
+
+.toggle-switch .slider {
+  position: absolute;
+  inset: 0;
+  background: var(--bg-card-glass);
+  border: 1px solid var(--border-card);
+  border-radius: 11px;
+  transition: var(--transition);
+}
+
+.toggle-switch .slider::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  transition: var(--transition);
+}
+
+.toggle-switch input:checked + .slider {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+}
+
+.toggle-switch input:checked + .slider::before {
+  background: var(--accent);
+  transform: translateX(18px);
+}
+
+.gradient-options {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gradient-options.hidden { display: none; }
+
+.angle-slider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.angle-slider input[type="range"] {
+  flex: 1;
+  -webkit-appearance: none;
+  height: 4px;
+  background: var(--border-card);
+  border-radius: 2px;
+  outline: none;
+}
+
+.angle-slider input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+}
+
+.angle-value {
+  font-size: 13px;
+  color: var(--text-secondary);
+  min-width: 36px;
+  text-align: right;
+}
+
+.form-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 24px;
+}
+
+/* ========================================
+   Detail Modal
+   ======================================== */
+.detail-title {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+
+.detail-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.detail-tag {
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+
+.detail-content {
+  font-size: 15px;
+  line-height: 1.8;
+  color: var(--text-primary);
+  margin-bottom: 16px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.detail-source {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  padding: 8px 12px;
+  background: var(--bg-card-glass);
+  border-radius: var(--radius-xs);
+  border-left: 3px solid var(--accent);
+}
+
+.detail-time {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 20px;
+}
+
+.detail-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+/* ========================================
+   Bottom Bar
+   ======================================== */
+.bottom-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 24px;
+  border-top: 1px solid var(--border-card);
+  font-size: 13px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.settings-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--radius-xs);
+  transition: var(--transition);
+}
+
+.settings-btn:hover { color: var(--text-primary); background: var(--bg-card-glass); }
+
+/* ========================================
+   Scrollbar
+   ======================================== */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-card); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-hover); }
+</style>
+</head>
+<body>
+
+<div class="scanner-bg" id="scannerBg"></div>
+
+<div class="app">
+  <!-- Top Control Bar -->
+  <div class="control-bar">
+    <div class="control-row">
+      <div class="search-wrap">
+        <span class="icon">&#x1F50D;</span>
+        <input class="search-input" id="searchInput" type="text" placeholder="搜索标题、正文、来源...">
+      </div>
+      <div class="tag-bar" id="tagBar"></div>
+      <button class="btn btn-primary" id="btnNew">+ 新建卡片</button>
+    </div>
+    <div class="control-row">
+      <div class="sort-select">
+        <span>排序</span>
+        <select id="sortSelect">
+          <option value="createdAt">创建时间</option>
+          <option value="updatedAt">修改时间</option>
+        </select>
+      </div>
+      <div class="speed-group">
+        <span>速度</span>
+        <button class="speed-btn" data-speed="slow">慢</button>
+        <button class="speed-btn active" data-speed="medium">中</button>
+        <button class="speed-btn" data-speed="fast">快</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Conveyor Belt -->
+  <div class="conveyor-wrap" id="conveyorWrap">
+    <div class="conveyor-track" id="conveyorTrack"></div>
+    <div class="empty-state" id="emptyState">
+      <span class="icon">&#x1F4DD;</span>
+      <span class="text">还没有灵感卡片，点击 + 创建第一张吧</span>
+    </div>
+  </div>
+
+  <!-- Bottom Bar -->
+  <div class="bottom-bar">
+    <span>共 <strong id="cardCount">0</strong> 张卡片</span>
+    <button class="settings-btn" id="btnSettings" title="全局设置">&#9881;</button>
+  </div>
+</div>
+
+<!-- ========================================
+     Modals
+     ======================================== -->
+
+<!-- Card Form Modal (New / Edit) -->
+<div class="modal-overlay" id="modalForm" style="display:none;">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="formModalTitle">新建卡片</h3>
+      <button class="modal-close" onclick="closeModal('modalForm')">&times;</button>
+    </div>
+    <form id="cardForm">
+      <input type="hidden" id="formCardId">
+      <div class="form-group">
+        <label>标题 <span class="required">*</span></label>
+        <input class="form-input" id="formTitle" type="text" placeholder="输入卡片标题" required>
+      </div>
+      <div class="form-group">
+        <label>正文 <span class="required">*</span></label>
+        <textarea class="form-textarea" id="formContent" placeholder="输入灵感、金句或语录内容..." required></textarea>
+      </div>
+      <div class="form-group">
+        <label>来源</label>
+        <input class="form-input" id="formSource" type="text" placeholder="出处、作者、书名...">
+      </div>
+      <div class="form-group">
+        <label>标签</label>
+        <div class="tags-input-wrap" id="formTagsWrap">
+          <input class="tag-input-inner" id="formTagsInput" placeholder="输入标签后回车添加">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>背景色</label>
+        <div class="color-picker-group">
+          <input type="color" id="formBgColor" value="#1a1a24">
+          <span style="font-size:13px;color:var(--text-secondary);">纯色背景</span>
+        </div>
+        <div class="gradient-toggle">
+          <label class="toggle-switch">
+            <input type="checkbox" id="formGradientEnabled">
+            <span class="slider"></span>
+          </label>
+          <span style="font-size:13px;color:var(--text-secondary);">启用渐变</span>
+        </div>
+        <div class="gradient-options hidden" id="formGradientOptions">
+          <div class="color-picker-group">
+            <input type="color" id="formGradientColor1" value="#1a1a24">
+            <input type="color" id="formGradientColor2" value="#2a2a38">
+            <span style="font-size:13px;color:var(--text-secondary);">起始色 &rarr; 结束色</span>
+          </div>
+          <div class="angle-slider">
+            <input type="range" id="formGradientAngle" min="0" max="360" value="135">
+            <span class="angle-value" id="angleValue">135°</span>
+          </div>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-ghost" onclick="closeModal('modalForm')">取消</button>
+        <button type="submit" class="btn btn-primary">保存</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Card Detail Modal -->
+<div class="modal-overlay" id="modalDetail" style="display:none;">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>卡片详情</h3>
+      <button class="modal-close" onclick="closeModal('modalDetail')">&times;</button>
+    </div>
+    <div id="detailContent"></div>
+  </div>
+</div>
+
+<!-- Delete Confirm Modal -->
+<div class="modal-overlay" id="modalConfirm" style="display:none;">
+  <div class="modal confirm-modal">
+    <div class="modal-header">
+      <h3>确认删除</h3>
+      <button class="modal-close" onclick="closeModal('modalConfirm')">&times;</button>
+    </div>
+    <p>确定要删除这张卡片吗？<br>此操作不可撤销。</p>
+    <div class="confirm-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modalConfirm')">取消</button>
+      <button class="btn btn-danger" id="btnConfirmDelete">确认删除</button>
+    </div>
+  </div>
+</div>
+
+<!-- Global Settings Modal -->
+<div class="modal-overlay" id="modalSettings" style="display:none;">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>全局设置</h3>
+      <button class="modal-close" onclick="closeModal('modalSettings')">&times;</button>
+    </div>
+    <div class="form-group">
+      <label>默认背景色</label>
+      <div class="color-picker-group">
+        <input type="color" id="settingsBgColor" value="#1a1a24">
+        <span style="font-size:13px;color:var(--text-secondary);">新卡片默认纯色背景</span>
+      </div>
+    </div>
+    <div class="form-group">
+      <div class="gradient-toggle">
+        <label class="toggle-switch">
+          <input type="checkbox" id="settingsGradientEnabled">
+          <span class="slider"></span>
+        </label>
+        <span style="font-size:13px;color:var(--text-secondary);">默认启用渐变</span>
+      </div>
+      <div class="gradient-options hidden" id="settingsGradientOptions">
+        <div class="color-picker-group">
+          <input type="color" id="settingsGradientColor1" value="#1a1a24">
+          <input type="color" id="settingsGradientColor2" value="#2a2a38">
+          <span style="font-size:13px;color:var(--text-secondary);">起始色 &rarr; 结束色</span>
+        </div>
+        <div class="angle-slider">
+          <input type="range" id="settingsGradientAngle" min="0" max="360" value="135">
+          <span class="angle-value" id="settingsAngleValue">135°</span>
+        </div>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modalSettings')">取消</button>
+      <button class="btn btn-primary" id="btnSaveSettings">保存设置</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+// ========================================
+// Scanner - 扫描线效果背景（基于 OGL 库）
+// 完整内联版本，无需外部依赖
+// ========================================
+
+import { Renderer, Program, Mesh, Triangle } from 'https://esm.sh/ogl@1.0.8';
+
+// 工具函数
+const hexToRgb = (hex) => {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  if (!result) return [1, 1, 1];
+  return [
+    parseInt(result[1], 16) / 255,
+    parseInt(result[2], 16) / 255,
+    parseInt(result[3], 16) / 255
+  ];
+};
+
+const directionToFloat = (dir) => {
+  if (dir === 'horizontal') return 1.0;
+  if (dir === 'diagonal') return 2.0;
+  return 0.0;
+};
+
+// Vertex Shader
+const vertex = `#version 300 es
+in vec2 position;
+void main() {
+  gl_Position = vec4(position, 0.0, 1.0);
+}
+`;
+
+// Fragment Shader
+const fragment = `#version 300 es
+precision highp float;
+
+uniform vec2 iResolution;
+uniform float iTime;
+uniform float uSpeed;
+uniform float uSweepSpeed;
+uniform float uSweepWidth;
+uniform float uSweepFalloff;
+uniform float uScale;
+uniform float uFrequency;
+uniform float uRipple;
+uniform float uBandDensity;
+uniform float uLineSharpness;
+uniform float uGlow;
+uniform float uColorSpread;
+uniform float uBrightness;
+uniform float uContrast;
+uniform float uSoftness;
+uniform float uVignette;
+uniform float uOpacity;
+uniform float uScanline;
+uniform float uGrain;
+uniform float uGrainIntensity;
+uniform float uDirection;
+uniform vec2 uMouse;
+uniform float uMouseEnabled;
+uniform float uMouseRadius;
+uniform float uMouseStrength;
+uniform float uMouseActive;
+uniform vec3 uColor1;
+uniform vec3 uColor2;
+uniform vec3 uColor3;
+
+out vec4 fragColor;
+
+const float TAU = 6.2831853;
+
+float signalField(vec2 p, float t) {
+  float w = sin(p.x * 1.3 + t * 0.7);
+  w += sin(p.y * 1.7 - t * 0.52) * 0.8;
+  w += sin((p.x + p.y) * 0.9 + t * 0.91) * 0.6;
+  w += sin((p.x - p.y) * 1.53 - t * 0.63) * 0.42;
+  return w * 0.35;
+}
+
+vec3 palette(float f) {
+  f = clamp(f, 0.0, 1.0);
+  f = pow(f, uContrast);
+  vec3 c = mix(uColor1, uColor2, smoothstep(0.08, 0.6, f));
+  return mix(c, uColor3, smoothstep(0.68, 1.0, f));
+}
+
+float scanBand(float x, float aa, float sharp) {
+  float v = mix(0.5, 0.5 + 0.5 * cos(x * TAU), aa);
+  return pow(v, sharp);
+}
+
+void main() {
+  float aspect = iResolution.x / iResolution.y;
+  vec2 uv0 = (gl_FragCoord.xy * 2.0 - iResolution.xy) / iResolution.y;
+  vec2 p = uv0 / max(uScale, 0.001);
+
+  float t = iTime * uSpeed;
+
+  // 鼠标交互
+  float mouseBoost = 0.0;
+  if (uMouseEnabled > 0.5) {
+    vec2 mUv = vec2((uMouse.x * 2.0 - 1.0) * aspect, uMouse.y * 2.0 - 1.0);
+    vec2 md = uv0 - mUv;
+    float r = max(uMouseRadius, 0.001);
+    mouseBoost = exp(-dot(md, md) / (r * r)) * uMouseStrength * uMouseActive;
+  }
+
+  // 扫描方向
+  float axis;
+  if (uDirection < 0.5) axis = p.y;
+  else if (uDirection < 1.5) axis = p.x;
+  else axis = (p.x + p.y) * 0.70710678;
+
+  // 信号场扭曲
+  float sig = signalField(p * uFrequency, t);
+  float coord = axis + sig * uRipple;
+
+  // 扫描带
+  float phase = coord / max(uSweepWidth, 0.05) - t * uSweepSpeed;
+  float sweep = pow(0.5 + 0.5 * cos(phase * TAU), max(uSweepFalloff, 0.1));
+
+  // 扫描线密度和抗锯齿
+  float lc = coord * uBandDensity;
+  float aa = 1.0 / (1.0 + uSoftness * fwidth(lc) * 3.0);
+  aa = clamp(aa * (1.0 + mouseBoost * 0.6), 0.0, 1.0);
+
+  // 发光体
+  float bodyBase = clamp(0.5 + 0.5 * sig, 0.0, 1.0);
+  float body = bodyBase * bodyBase * uGlow * sweep;
+
+  // RGB 分离扫描带
+  float sharp = max(uLineSharpness, 0.1);
+  float split = uColorSpread * 0.16;
+  float fr = clamp(scanBand(lc + split, aa, sharp) * sweep + body, 0.0, 1.0);
+  float fg = clamp(scanBand(lc, aa, sharp) * sweep + body, 0.0, 1.0);
+  float fb = clamp(scanBand(lc - split, aa, sharp) * sweep + body, 0.0, 1.0);
+
+  // 调色板混合
+  vec3 col = vec3(palette(fr).r, palette(fg).g, palette(fb).b);
+
+  // 亮度计算
+  float inten = (fr + fg + fb) * 0.3333333 * uBrightness;
+  inten *= 1.0 + mouseBoost * 0.9;
+
+  // CRT 扫描线
+  if (uScanline > 0.5) {
+    inten *= 1.0 - 0.18 * (0.5 + 0.5 * cos(gl_FragCoord.y * 1.7));
+  }
+
+  // 胶片颗粒
+  if (uGrain > 0.5) {
+    float g = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233)) + iTime) * 43758.5453);
+    inten += (g - 0.5) * uGrainIntensity;
+  }
+
+  // 暗角效果
+  inten *= clamp(1.0 - uVignette * smoothstep(0.55, 1.65, length(uv0)), 0.0, 1.0);
+  inten = clamp(inten, 0.0, 1.0);
+
+  // 输出
+  float a = clamp(inten * uOpacity, 0.0, 1.0);
+  fragColor = vec4(clamp(col, 0.0, 1.0) * a, a);
+}
+`;
+
+// Scanner 初始化函数
+function initScanner(container, options = {}) {
+  // 默认配置
+  const props = {
+    color1: '#5227FF',
+    color2: '#FF9FFC',
+    color3: '#FFFFFF',
+    speed: 0.5,
+    sweepSpeed: 0.25,
+    sweepWidth: 1.6,
+    sweepFalloff: 6,
+    scale: 1.5,
+    frequency: 2,
+    ripple: 0.22,
+    bandDensity: 11,
+    lineSharpness: 5.5,
+    glow: 0.22,
+    scanDirection: 'vertical',
+    colorSpread: 0.7,
+    brightness: 1.0,
+    contrast: 1.15,
+    softness: 1.4,
+    vignette: 0.45,
+    scanline: true,
+    grain: true,
+    grainIntensity: 0.05,
+    opacity: 1.0,
+    mouseInteraction: true,
+    mouseRadius: 0.5,
+    mouseStrength: 0.5,
+    ...options
+  };
+
+  let mouseInteractionRef = props.mouseInteraction;
+
+  // 创建 Renderer
+  const renderer = new Renderer({
+    webgl: 2,
+    alpha: true,
+    premultipliedAlpha: true,
+    antialias: false,
+    dpr: Math.min(window.devicePixelRatio || 1, 2)
+  });
+
+  const gl = renderer.gl;
+  gl.clearColor(0, 0, 0, 0);
+
+  const canvas = gl.canvas;
+  canvas.style.width = '100%';
+  canvas.style.height = '100%';
+  canvas.style.display = 'block';
+  container.appendChild(canvas);
+
+  // 创建全屏三角形几何体
+  const geometry = new Triangle(gl);
+
+  // 渲染程序
+  const program = new Program(gl, {
+    vertex,
+    fragment,
+    uniforms: {
+      iTime: { value: 0 },
+      iResolution: { value: new Float32Array([1, 1]) },
+      uSpeed: { value: props.speed },
+      uSweepSpeed: { value: props.sweepSpeed },
+      uSweepWidth: { value: props.sweepWidth },
+      uSweepFalloff: { value: props.sweepFalloff },
+      uScale: { value: props.scale },
+      uFrequency: { value: props.frequency },
+      uRipple: { value: props.ripple },
+      uBandDensity: { value: props.bandDensity },
+      uLineSharpness: { value: props.lineSharpness },
+      uGlow: { value: props.glow },
+      uColorSpread: { value: props.colorSpread },
+      uBrightness: { value: props.brightness },
+      uContrast: { value: props.contrast },
+      uSoftness: { value: props.softness },
+      uVignette: { value: props.vignette },
+      uOpacity: { value: props.opacity },
+      uScanline: { value: props.scanline ? 1.0 : 0.0 },
+      uGrain: { value: props.grain ? 1.0 : 0.0 },
+      uGrainIntensity: { value: props.grainIntensity },
+      uDirection: { value: directionToFloat(props.scanDirection) },
+      uMouse: { value: new Float32Array([0.5, 0.5]) },
+      uMouseEnabled: { value: props.mouseInteraction ? 1.0 : 0.0 },
+      uMouseRadius: { value: props.mouseRadius },
+      uMouseStrength: { value: props.mouseStrength },
+      uMouseActive: { value: 0.0 },
+      uColor1: { value: new Float32Array(hexToRgb(props.color1)) },
+      uColor2: { value: new Float32Array(hexToRgb(props.color2)) },
+      uColor3: { value: new Float32Array(hexToRgb(props.color3)) }
+    }
+  });
+
+  const mesh = new Mesh(gl, { geometry, program });
+
+  // 设置尺寸
+  const setSize = () => {
+    const rect = container.getBoundingClientRect();
+    const w = Math.max(1, Math.floor(rect.width));
+    const h = Math.max(1, Math.floor(rect.height));
+    renderer.setSize(w, h);
+
+    const res = program.uniforms.iResolution.value;
+    res[0] = gl.drawingBufferWidth;
+    res[1] = gl.drawingBufferHeight;
+
+    renderer.render({ scene: mesh });
+  };
+
+  // ResizeObserver
+  const ro = new ResizeObserver(setSize);
+  ro.observe(container);
+  setSize();
+
+  // 鼠标状态
+  let currentMouse = [0.5, 0.5];
+  let targetMouse = [0.5, 0.5];
+  let mouseActive = 0;
+  let targetMouseActive = 0;
+
+  // 鼠标事件
+  const onMouseMove = (e) => {
+    const rect = canvas.getBoundingClientRect();
+    targetMouse = [
+      (e.clientX - rect.left) / rect.width,
+      1.0 - (e.clientY - rect.top) / rect.height
+    ];
+    targetMouseActive = 1;
+  };
+
+  const onMouseLeave = () => {
+    targetMouseActive = 0;
+  };
+
+  canvas.addEventListener('mousemove', onMouseMove);
+  canvas.addEventListener('mouseleave', onMouseLeave);
+
+  // 动画循环
+  let raf = 0;
+  let isVisible = true;
+  let isPageVisible = !document.hidden;
+  const t0 = performance.now();
+
+  const loop = (t) => {
+    program.uniforms.iTime.value = (t - t0) * 0.001;
+
+    if (!mouseInteractionRef) {
+      targetMouseActive = 0;
+    }
+
+    // 平滑鼠标跟随
+    currentMouse[0] += 0.05 * (targetMouse[0] - currentMouse[0]);
+    currentMouse[1] += 0.05 * (targetMouse[1] - currentMouse[1]);
+    program.uniforms.uMouse.value[0] = currentMouse[0];
+    program.uniforms.uMouse.value[1] = currentMouse[1];
+
+    mouseActive += 0.05 * (targetMouseActive - mouseActive);
+    program.uniforms.uMouseActive.value = mouseActive;
+
+    renderer.render({ scene: mesh });
+    raf = requestAnimationFrame(loop);
+  };
+
+  const tryStart = () => {
+    if (isVisible && isPageVisible && raf === 0) {
+      raf = requestAnimationFrame(loop);
+    }
+  };
+
+  const tryStop = () => {
+    if (raf !== 0) {
+      cancelAnimationFrame(raf);
+      raf = 0;
+    }
+  };
+
+  // IntersectionObserver
+  const io = new IntersectionObserver(
+    ([entry]) => {
+      isVisible = entry.isIntersecting;
+      isVisible ? tryStart() : tryStop();
+    },
+    { threshold: 0 }
+  );
+  io.observe(container);
+
+  // 页面可见性
+  const onVisibility = () => {
+    isPageVisible = !document.hidden;
+    isPageVisible ? tryStart() : tryStop();
+  };
+  document.addEventListener('visibilitychange', onVisibility);
+
+  tryStart();
+
+  console.log('[Scanner] Initialized');
+
+  // 返回控制接口
+  return {
+    update(newProps) {
+      Object.assign(props, newProps);
+
+      const u = program.uniforms;
+      u.uSpeed.value = props.speed;
+      u.uSweepSpeed.value = props.sweepSpeed;
+      u.uSweepWidth.value = props.sweepWidth;
+      u.uSweepFalloff.value = props.sweepFalloff;
+      u.uScale.value = props.scale;
+      u.uFrequency.value = props.frequency;
+      u.uRipple.value = props.ripple;
+      u.uBandDensity.value = props.bandDensity;
+      u.uLineSharpness.value = props.lineSharpness;
+      u.uGlow.value = props.glow;
+      u.uColorSpread.value = props.colorSpread;
+      u.uBrightness.value = props.brightness;
+      u.uContrast.value = props.contrast;
+      u.uSoftness.value = props.softness;
+      u.uVignette.value = props.vignette;
+      u.uOpacity.value = props.opacity;
+      u.uScanline.value = props.scanline ? 1.0 : 0.0;
+      u.uGrain.value = props.grain ? 1.0 : 0.0;
+      u.uGrainIntensity.value = props.grainIntensity;
+      u.uDirection.value = directionToFloat(props.scanDirection);
+      u.uMouseEnabled.value = props.mouseInteraction ? 1.0 : 0.0;
+      u.uMouseRadius.value = props.mouseRadius;
+      u.uMouseStrength.value = props.mouseStrength;
+
+      const c1 = hexToRgb(props.color1);
+      u.uColor1.value[0] = c1[0];
+      u.uColor1.value[1] = c1[1];
+      u.uColor1.value[2] = c1[2];
+
+      const c2 = hexToRgb(props.color2);
+      u.uColor2.value[0] = c2[0];
+      u.uColor2.value[1] = c2[1];
+      u.uColor2.value[2] = c2[2];
+
+      const c3 = hexToRgb(props.color3);
+      u.uColor3.value[0] = c3[0];
+      u.uColor3.value[1] = c3[1];
+      u.uColor3.value[2] = c3[2];
+
+      mouseInteractionRef = props.mouseInteraction;
+    },
+
+    destroy() {
+      tryStop();
+      ro.disconnect();
+      io.disconnect();
+      document.removeEventListener('visibilitychange', onVisibility);
+      canvas.removeEventListener('mousemove', onMouseMove);
+      canvas.removeEventListener('mouseleave', onMouseLeave);
+
+      try {
+        container.removeChild(canvas);
+      } catch {}
+
+      gl.getExtension('WEBGL_lose_context')?.loseContext();
+      console.log('[Scanner] Destroyed');
+    }
+  };
+}
+
+// 初始化 Scanner 背景
+const scannerInstance = initScanner(document.getElementById('scannerBg'), {
+  color1: '#5227FF',        // 深紫底色（扫描场基色）
+  color2: '#FF9FFC',        // 粉色干扰带
+  color3: '#FFFFFF',        // 白色信号峰值
+  speed: 0.5,              // 整体动画速度
+  sweepSpeed: 0.25,        // 扫描带移动速率
+  sweepWidth: 1.6,         // 扫描带间距
+  sweepFalloff: 6,         // 扫描集中度
+  scale: 1.5,              // 缩放级别
+  frequency: 2,            // 信号空间频率
+  ripple: 0.22,            // 扫描线弯曲强度
+  bandDensity: 11,         // 扫描线密度
+  lineSharpness: 5.5,      // 扫描线锐度
+  glow: 0.22,              // 发光填充
+  scanDirection: 'vertical', // 扫描方向：垂直
+  colorSpread: 0.7,        // 色彩分离程度
+  brightness: 1.0,         // 整体亮度
+  contrast: 1.15,          // 对比度
+  softness: 1.4,           // 抗锯齿柔和度
+  vignette: 0.45,          // 暗角强度
+  scanline: true,          // CRT 扫描线
+  grain: true,             // 胶片颗粒
+  grainIntensity: 0.05,    // 颗粒强度
+  opacity: 1.0,            // 整体透明度
+  mouseInteraction: true,  // 鼠标交互
+  mouseRadius: 0.5,        // 鼠标聚焦半径
+  mouseStrength: 0.5       // 鼠标聚焦强度
+});
+
+console.log('[App] Scanner background initialized with OGL');
+</script>
+<script>
+const STORAGE_KEY_CARDS = 'ideacardwall_cards';
+const STORAGE_KEY_SETTINGS = 'ideacardwall_settings';
+const STORAGE_KEY_TAGS = 'ideacardwall_tags';
+
+function generateId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 9);
+}
+
+function formatTime(ts) {
+  const d = new Date(ts);
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+const defaultSettings = {
+  defaultBackgroundColor: '#1a1a24',
+  defaultGradient: {
+    color1: '#1a1a24',
+    color2: '#2a2a38',
+    angle: 135
+  },
+  scrollSpeed: 'medium',
+  sortBy: 'createdAt'
+};
+
+function loadCards() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_CARDS);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed.length > 0) return parsed;
+    }
+    // 首次使用或无卡片时，返回预设示例卡片
+    const now = Date.now();
+    return [
+      {
+        id: generateId(),
+        title: 'Stay hungry, stay foolish',
+        content: '求知若饥，虚心若愚。这是 Steve Jobs 在斯坦福大学毕业典礼上的名言，鼓励我们永远保持对知识的渴望和对未知的谦逊。',
+        source: 'Steve Jobs',
+        tags: ['名言', '励志'],
+        backgroundColor: '#1a2a2f',
+        createdAt: now - 500000,
+        updatedAt: now - 500000
+      },
+      {
+        id: generateId(),
+        title: '设计不只是看起来怎么样',
+        content: '设计不只是它看起来怎么样和感觉怎么样，设计是它怎么工作的。好的设计应该让复杂的事情变得简单。',
+        source: 'Steve Jobs',
+        tags: ['设计', '产品'],
+        backgroundColor: '#1a1a24',
+        createdAt: now - 400000,
+        updatedAt: now - 400000
+      },
+      {
+        id: generateId(),
+        title: '代码是写给人看的',
+        content: '任何傻瓜都能写出计算机可以理解的代码。好的程序员写出人类可以理解的代码。保持代码简洁清晰比炫技更重要。',
+        source: 'Martin Fowler',
+        tags: ['编程', '技术'],
+        backgroundColor: '#1a241a',
+        createdAt: now - 300000,
+        updatedAt: now - 300000
+      },
+      {
+        id: generateId(),
+        title: '最好的投资',
+        content: '你能做的最好的投资就是你自己的能力。没有人能对你征税，也没有人能把它从你身上拿走。不断提升自己，让自己变得更有价值。',
+        source: 'Warren Buffett',
+        tags: ['投资', '成长'],
+        backgroundColor: '#241a1a',
+        createdAt: now - 200000,
+        updatedAt: now - 200000
+      },
+      {
+        id: generateId(),
+        title: '思考比工具更重要',
+        content: 'AI 时代，提出正确问题的能力比掌握工具的能力更重要。学会思考，学会提问，学会在答案中寻找下一个问题。',
+        source: 'AI 时代思考',
+        tags: ['AI', '思考'],
+        backgroundColor: '#1a1a2f',
+        createdAt: now - 100000,
+        updatedAt: now - 100000
+      },
+      {
+        id: generateId(),
+        title: '简单是终极的复杂',
+        content: 'Simplicity is the ultimate sophistication. 真正的简单不是简陋，而是在深刻理解复杂之后做出的精准取舍。',
+        source: 'Leonardo da Vinci',
+        tags: ['设计', '哲学'],
+        backgroundColor: '#1a1a24',
+        createdAt: now - 50000,
+        updatedAt: now - 50000
+      },
+      {
+        id: generateId(),
+        title: '行动胜于完美',
+        content: 'Done is better than perfect. 追求完美常常是拖延的借口。先完成再优化，在迭代中逐步接近理想状态。',
+        source: 'Sheryl Sandberg',
+        tags: ['行动', '效率'],
+        backgroundColor: '#1f1a24',
+        createdAt: now,
+        updatedAt: now
+      }
+    ];
+  } catch { return []; }
+}
+
+function saveCards(cards) {
+  localStorage.setItem(STORAGE_KEY_CARDS, JSON.stringify(cards));
+}
+
+function loadSettings() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_SETTINGS);
+    return raw ? { ...defaultSettings, ...JSON.parse(raw) } : { ...defaultSettings };
+  } catch { return { ...defaultSettings }; }
+}
+
+function saveSettings(s) {
+  localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify(s));
+}
+
+function loadTagPool() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_TAGS);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+function saveTagPool(tags) {
+  localStorage.setItem(STORAGE_KEY_TAGS, JSON.stringify(tags));
+}
+
+function rebuildTagPool(cards) {
+  const set = new Set();
+  cards.forEach(c => c.tags.forEach(t => set.add(t)));
+  saveTagPool([...set]);
+}
+
+// ========================================
+// App State
+// ========================================
+let cards = loadCards();
+let settings = loadSettings();
+let tagPool = loadTagPool();
+let selectedTags = [];
+let searchKeyword = '';
+let pendingDeleteId = null;
+let editingCardId = null;
+let scrollPos = 0;
+let animationId = null;
+let isPaused = false;
+let lastTime = 0;
+
+// 拖拽状态
+let isDragging = false;
+let dragStartX = 0;
+let dragStartScrollPos = 0;
+let hasDragged = false;
+
+// Speed config (pixels per second)
+const SPEED_MAP = { slow: 20, medium: 40, fast: 70 };
+
+// ========================================
+// DOM Refs
+// ========================================
+const $conveyorWrap = document.getElementById('conveyorWrap');
+const $conveyorTrack = document.getElementById('conveyorTrack');
+const $emptyState = document.getElementById('emptyState');
+const $searchInput = document.getElementById('searchInput');
+const $tagBar = document.getElementById('tagBar');
+const $sortSelect = document.getElementById('sortSelect');
+const $cardCount = document.getElementById('cardCount');
+
+// ========================================
+// Render Helpers
+// ========================================
+function getCardBg(card) {
+  if (card.backgroundGradient && card.backgroundGradient.enabled) {
+    const { color1, color2, angle } = card.backgroundGradient;
+    return `linear-gradient(${angle}deg, ${color1}, ${color2})`;
+  }
+  return card.backgroundColor || settings.defaultBackgroundColor;
+}
+
+function highlightText(text, keyword) {
+  if (!keyword.trim()) return text;
+  const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(`(${escaped})`, 'gi');
+  return text.replace(regex, '<mark>$1</mark>');
+}
+
+function isCardVisible(card) {
+  // Tag filter
+  if (selectedTags.length > 0) {
+    const hasTag = selectedTags.some(t => card.tags.includes(t));
+    if (!hasTag) return false;
+  }
+  // Search filter
+  if (searchKeyword.trim()) {
+    const kw = searchKeyword.toLowerCase();
+    return card.title.toLowerCase().includes(kw)
+      || card.content.toLowerCase().includes(kw)
+      || (card.source && card.source.toLowerCase().includes(kw));
+  }
+  return true;
+}
+
+// ========================================
+// Render Conveyor Belt
+// ========================================
+function getSortedCards() {
+  const sorted = [...cards];
+  sorted.sort((a, b) => {
+    if (settings.sortBy === 'createdAt') return b.createdAt - a.createdAt;
+    return b.updatedAt - a.updatedAt;
+  });
+  return sorted;
+}
+
+function renderCards() {
+  const sorted = getSortedCards();
+  const visibleCards = sorted.filter(isCardVisible);
+
+  if (visibleCards.length === 0) {
+    $conveyorTrack.innerHTML = '';
+    $emptyState.style.display = 'flex';
+    $emptyState.querySelector('.text').textContent = searchKeyword || selectedTags.length
+      ? '没有找到匹配的卡片'
+      : '还没有灵感卡片，点击 + 创建第一张吧';
+    updateCardCount();
+    return;
+  }
+
+  $emptyState.style.display = 'none';
+
+  let cardHtml = '';
+  visibleCards.forEach(card => {
+    const bg = getCardBg(card);
+    const title = highlightText(card.title, searchKeyword);
+    const content = highlightText(card.content, searchKeyword);
+    const source = highlightText(card.source || '', searchKeyword);
+    const tagsHtml = card.tags.map(t => `<span class="card-tag">${t}</span>`).join('');
+
+    cardHtml += `
+      <div class="card" data-id="${card.id}" style="background: ${bg};" onclick="openDetail('${card.id}')">
+        <div class="card-title">${title}</div>
+        <div class="card-content">${content}</div>
+        ${card.source ? `<div class="card-source">— ${source}</div>` : ''}
+        ${tagsHtml ? `<div class="card-tags">${tagsHtml}</div>` : ''}
+      </div>`;
+  });
+
+  // 三份复制，首尾相连无缝循环
+  $conveyorTrack.innerHTML = cardHtml + cardHtml + cardHtml;
+  updateCardCount();
+}
+
+function updateCardCount() {
+  const sorted = getSortedCards();
+  const visible = sorted.filter(isCardVisible);
+  $cardCount.textContent = visible.length;
+}
+
+// ========================================
+// Tag Bar
+// ========================================
+function renderTagBar() {
+  let html = '';
+  tagPool.forEach(tag => {
+    const active = selectedTags.includes(tag) ? ' active' : '';
+    html += `<span class="tag-chip${active}" data-tag="${tag}">${tag}</span>`;
+  });
+  $tagBar.innerHTML = html;
+
+  // Click handler
+  $tagBar.querySelectorAll('.tag-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const tag = chip.dataset.tag;
+      if (selectedTags.includes(tag)) {
+        selectedTags = selectedTags.filter(t => t !== tag);
+      } else {
+        selectedTags.push(tag);
+      }
+      resetScroll();
+      renderAll();
+    });
+  });
+}
+
+function renderAll() {
+  renderTagBar();
+  renderCards();
+}
+
+// ========================================
+// Conveyor Scroll Animation
+// ========================================
+function animate(timestamp) {
+  if (!lastTime) lastTime = timestamp;
+  const delta = (timestamp - lastTime) / 1000;
+  lastTime = timestamp;
+
+  if (!isPaused && !isDragging) {
+    scrollPos += SPEED_MAP[settings.scrollSpeed] * delta;
+  }
+
+  const trackWidth = $conveyorTrack.scrollWidth;
+
+  if (trackWidth > 0) {
+    // 三份卡片，每份宽度为 oneSetWidth
+    const oneSetWidth = trackWidth / 3;
+    // 始终保持在中间那组范围内，左右各有一组作为缓冲
+    if (scrollPos >= oneSetWidth * 2) {
+      scrollPos -= oneSetWidth;
+    } else if (scrollPos < 0) {
+      scrollPos += oneSetWidth;
+    }
+  }
+
+  $conveyorTrack.style.transform = `translateX(${-scrollPos}px)`;
+  animationId = requestAnimationFrame(animate);
+}
+
+function startAnimation() {
+  if (animationId) cancelAnimationFrame(animationId);
+  lastTime = 0;
+  // 从中间那组开始，确保左右都有内容
+  const trackWidth = $conveyorTrack.scrollWidth;
+  if (trackWidth > 0 && scrollPos === 0) {
+    scrollPos = trackWidth / 3;
+  }
+  animationId = requestAnimationFrame(animate);
+}
+
+function stopAnimation() {
+  if (animationId) {
+    cancelAnimationFrame(animationId);
+    animationId = null;
+  }
+}
+
+function resetScroll() {
+  const trackWidth = $conveyorTrack.scrollWidth;
+  scrollPos = trackWidth > 0 ? trackWidth / 3 : 0;
+  lastTime = 0;
+}
+
+// 鼠标拖拽滚动
+$conveyorWrap.addEventListener('mousedown', (e) => {
+  if (e.target.closest('.card')) {
+    isDragging = true;
+    hasDragged = false;
+    dragStartX = e.clientX;
+    dragStartScrollPos = scrollPos;
+    $conveyorWrap.style.cursor = 'grabbing';
+  }
+});
+
+window.addEventListener('mousemove', (e) => {
+  if (!isDragging) return;
+  const dx = dragStartX - e.clientX;
+  if (Math.abs(dx) > 3) hasDragged = true;
+  scrollPos = dragStartScrollPos + dx;
+});
+
+window.addEventListener('mouseup', () => {
+  if (isDragging) {
+    isDragging = false;
+    $conveyorWrap.style.cursor = '';
+    lastTime = 0;
+  }
+});
+
+// 鼠标悬停时暂停自动滚动
+$conveyorWrap.addEventListener('mouseenter', () => { isPaused = true; });
+$conveyorWrap.addEventListener('mouseleave', () => { isPaused = false; isDragging = false; $conveyorWrap.style.cursor = ''; lastTime = 0; });
+
+// ========================================
+// Search
+// ========================================
+let searchTimer = null;
+$searchInput.addEventListener('input', () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    searchKeyword = $searchInput.value;
+    resetScroll();
+    renderAll();
+  }, 300);
+});
+
+// ========================================
+// Sort
+// ========================================
+$sortSelect.value = settings.sortBy;
+$sortSelect.addEventListener('change', () => {
+  settings.sortBy = $sortSelect.value;
+  saveSettings(settings);
+  resetScroll();
+  renderAll();
+});
+
+// ========================================
+// Speed Buttons
+// ========================================
+document.querySelectorAll('.speed-btn').forEach(btn => {
+  if (btn.dataset.speed === settings.scrollSpeed) {
+    btn.classList.add('active');
+  } else {
+    btn.classList.remove('active');
+  }
+
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    settings.scrollSpeed = btn.dataset.speed;
+    saveSettings(settings);
+  });
+});
+
+// ========================================
+// Modal Utilities
+// ========================================
+function openModal(id) {
+  document.getElementById(id).style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  stopAnimation();
+}
+
+function closeModal(id) {
+  document.getElementById(id).style.display = 'none';
+  // Only resume if no other modal is open
+  const allModals = ['modalForm', 'modalDetail', 'modalConfirm', 'modalSettings'];
+  const anyOpen = allModals.some(m => m !== id && document.getElementById(m).style.display === 'flex');
+  if (!anyOpen) {
+    document.body.style.overflow = '';
+    startAnimation();
+  }
+}
+
+// Close modals on overlay click
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) {
+      closeModal(overlay.id);
+    }
+  });
+});
+
+// ESC to close
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    ['modalForm', 'modalDetail', 'modalConfirm', 'modalSettings'].forEach(id => {
+      if (document.getElementById(id).style.display === 'flex') {
+        closeModal(id);
+      }
+    });
+  }
+});
+
+// ========================================
+// New / Edit Card Form
+// ========================================
+const $cardForm = document.getElementById('cardForm');
+const $formTitle = document.getElementById('formTitle');
+const $formContent = document.getElementById('formContent');
+const $formSource = document.getElementById('formSource');
+const $formTagsWrap = document.getElementById('formTagsWrap');
+const $formTagsInput = document.getElementById('formTagsInput');
+const $formBgColor = document.getElementById('formBgColor');
+const $formGradientEnabled = document.getElementById('formGradientEnabled');
+const $formGradientOptions = document.getElementById('formGradientOptions');
+const $formGradientColor1 = document.getElementById('formGradientColor1');
+const $formGradientColor2 = document.getElementById('formGradientColor2');
+const $formGradientAngle = document.getElementById('formGradientAngle');
+const $angleValue = document.getElementById('angleValue');
+const $formCardId = document.getElementById('formCardId');
+const $formModalTitle = document.getElementById('formModalTitle');
+
+let formTags = [];
+
+// Reset form
+function resetForm() {
+  formTags = [];
+  $formCardId.value = '';
+  $formTitle.value = '';
+  $formContent.value = '';
+  $formSource.value = '';
+  $formBgColor.value = settings.defaultBackgroundColor;
+  $formGradientEnabled.checked = false;
+  $formGradientOptions.classList.add('hidden');
+  $formGradientColor1.value = settings.defaultGradient?.color1 || '#1a1a24';
+  $formGradientColor2.value = settings.defaultGradient?.color2 || '#2a2a38';
+  $formGradientAngle.value = settings.defaultGradient?.angle || 135;
+  $angleValue.textContent = $formGradientAngle.value + '°';
+  renderFormTags();
+  $formTagsInput.value = '';
+}
+
+function fillFormForEdit(card) {
+  $formCardId.value = card.id;
+  $formTitle.value = card.title;
+  $formContent.value = card.content;
+  $formSource.value = card.source || '';
+  formTags = [...card.tags];
+  $formBgColor.value = card.backgroundColor || settings.defaultBackgroundColor;
+  if (card.backgroundGradient && card.backgroundGradient.enabled) {
+    $formGradientEnabled.checked = true;
+    $formGradientOptions.classList.remove('hidden');
+    $formGradientColor1.value = card.backgroundGradient.color1;
+    $formGradientColor2.value = card.backgroundGradient.color2;
+    $formGradientAngle.value = card.backgroundGradient.angle;
+  } else {
+    $formGradientEnabled.checked = false;
+    $formGradientOptions.classList.add('hidden');
+  }
+  $angleValue.textContent = $formGradientAngle.value + '°';
+  renderFormTags();
+  $formTagsInput.value = '';
+}
+
+function renderFormTags() {
+  const existing = $formTagsWrap.querySelectorAll('.tag-input-item');
+  existing.forEach(el => el.remove());
+
+  formTags.forEach((tag, i) => {
+    const span = document.createElement('span');
+    span.className = 'tag-input-item';
+    span.innerHTML = `${tag}<span class="remove-tag" data-index="${i}">&times;</span>`;
+    $formTagsWrap.insertBefore(span, $formTagsInput);
+  });
+
+  // Re-attach remove handlers
+  $formTagsWrap.querySelectorAll('.remove-tag').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const idx = parseInt(btn.dataset.index);
+      formTags.splice(idx, 1);
+      renderFormTags();
+    });
+  });
+}
+
+$formTagsInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const val = $formTagsInput.value.trim();
+    if (val && !formTags.includes(val)) {
+      formTags.push(val);
+      renderFormTags();
+    }
+    $formTagsInput.value = '';
+  }
+});
+
+$formTagsWrap.addEventListener('click', () => {
+  $formTagsInput.focus();
+});
+
+// Gradient toggle
+$formGradientEnabled.addEventListener('change', () => {
+  $formGradientOptions.classList.toggle('hidden', !$formGradientEnabled.checked);
+});
+
+$formGradientAngle.addEventListener('input', () => {
+  $angleValue.textContent = $formGradientAngle.value + '°';
+});
+
+// New button
+document.getElementById('btnNew').addEventListener('click', () => {
+  editingCardId = null;
+  $formModalTitle.textContent = '新建卡片';
+  resetForm();
+  openModal('modalForm');
+  $formTitle.focus();
+});
+
+// Form submit
+$cardForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+
+  const title = $formTitle.value.trim();
+  const content = $formContent.value.trim();
+  if (!title || !content) return;
+
+  const now = Date.now();
+  const cardData = {
+    title,
+    content,
+    source: $formSource.value.trim(),
+    tags: [...formTags],
+    backgroundColor: $formBgColor.value,
+    backgroundGradient: $formGradientEnabled.checked ? {
+      enabled: true,
+      color1: $formGradientColor1.value,
+      color2: $formGradientColor2.value,
+      angle: parseInt($formGradientAngle.value)
+    } : null
+  };
+
+  if (editingCardId) {
+    // Edit
+    const idx = cards.findIndex(c => c.id === editingCardId);
+    if (idx !== -1) {
+      cards[idx] = { ...cards[idx], ...cardData, updatedAt: now };
+    }
+  } else {
+    // New
+    cards.push({
+      id: generateId(),
+      ...cardData,
+      createdAt: now,
+      updatedAt: now
+    });
+  }
+
+  saveCards(cards);
+  rebuildTagPool(cards);
+  tagPool = loadTagPool();
+  resetScroll();
+  renderAll();
+  closeModal('modalForm');
+  editingCardId = null;
+});
+
+// ========================================
+// Detail Modal
+// ========================================
+function openDetail(cardId) {
+  // 拖拽时不触发点击
+  if (hasDragged) { hasDragged = false; return; }
+  const card = cards.find(c => c.id === cardId);
+  if (!card) return;
+
+  const tagsHtml = card.tags.map(t => `<span class="detail-tag">${t}</span>`).join('');
+
+  document.getElementById('detailContent').innerHTML = `
+    <div class="detail-title">${card.title}</div>
+    ${tagsHtml ? `<div class="detail-meta">${tagsHtml}</div>` : ''}
+    <div class="detail-content">${card.content}</div>
+    ${card.source ? `<div class="detail-source">来源：${card.source}</div>` : ''}
+    <div class="detail-time">
+      创建于 ${formatTime(card.createdAt)} &nbsp;|&nbsp; 修改于 ${formatTime(card.updatedAt)}
+    </div>
+    <div class="detail-actions">
+      <button class="btn btn-ghost" onclick="openEdit('${card.id}')">编辑</button>
+      <button class="btn btn-danger btn-sm" onclick="confirmDelete('${card.id}')">删除</button>
+    </div>
+  `;
+
+  openModal('modalDetail');
+}
+
+function openEdit(cardId) {
+  closeModal('modalDetail');
+  const card = cards.find(c => c.id === cardId);
+  if (!card) return;
+  editingCardId = cardId;
+  $formModalTitle.textContent = '编辑卡片';
+  fillFormForEdit(card);
+  openModal('modalForm');
+  $formTitle.focus();
+}
+
+// ========================================
+// Delete Confirm
+// ========================================
+function confirmDelete(cardId) {
+  pendingDeleteId = cardId;
+  openModal('modalConfirm');
+}
+
+document.getElementById('btnConfirmDelete').addEventListener('click', () => {
+  if (!pendingDeleteId) return;
+  cards = cards.filter(c => c.id !== pendingDeleteId);
+  saveCards(cards);
+  rebuildTagPool(cards);
+  tagPool = loadTagPool();
+  resetScroll();
+  renderAll();
+  closeModal('modalConfirm');
+  closeModal('modalDetail');
+  pendingDeleteId = null;
+});
+
+// ========================================
+// Global Settings
+// ========================================
+const $settingsBgColor = document.getElementById('settingsBgColor');
+const $settingsGradientEnabled = document.getElementById('settingsGradientEnabled');
+const $settingsGradientOptions = document.getElementById('settingsGradientOptions');
+const $settingsGradientColor1 = document.getElementById('settingsGradientColor1');
+const $settingsGradientColor2 = document.getElementById('settingsGradientColor2');
+const $settingsGradientAngle = document.getElementById('settingsGradientAngle');
+const $settingsAngleValue = document.getElementById('settingsAngleValue');
+
+document.getElementById('btnSettings').addEventListener('click', () => {
+  $settingsBgColor.value = settings.defaultBackgroundColor;
+  $settingsGradientColor1.value = settings.defaultGradient?.color1 || '#1a1a24';
+  $settingsGradientColor2.value = settings.defaultGradient?.color2 || '#2a2a38';
+  $settingsGradientAngle.value = settings.defaultGradient?.angle || 135;
+  $settingsAngleValue.textContent = $settingsGradientAngle.value + '°';
+  const hasGradient = settings.defaultGradient?.color1 && settings.defaultGradient?.color2;
+  $settingsGradientEnabled.checked = !!hasGradient;
+  $settingsGradientOptions.classList.toggle('hidden', !hasGradient);
+  openModal('modalSettings');
+});
+
+$settingsGradientEnabled.addEventListener('change', () => {
+  $settingsGradientOptions.classList.toggle('hidden', !$settingsGradientEnabled.checked);
+});
+
+$settingsGradientAngle.addEventListener('input', () => {
+  $settingsAngleValue.textContent = $settingsGradientAngle.value + '°';
+});
+
+document.getElementById('btnSaveSettings').addEventListener('click', () => {
+  settings.defaultBackgroundColor = $settingsBgColor.value;
+  if ($settingsGradientEnabled.checked) {
+    settings.defaultGradient = {
+      color1: $settingsGradientColor1.value,
+      color2: $settingsGradientColor2.value,
+      angle: parseInt($settingsGradientAngle.value)
+    };
+  } else {
+    settings.defaultGradient = null;
+  }
+  saveSettings(settings);
+  closeModal('modalSettings');
+  resetScroll();
+  renderAll();
+});
+
+// ========================================
+// Init
+// ========================================
+function init() {
+  // 首次使用或旧版空数据时，将预设卡片写入 localStorage
+  let isEmpty = true;
+  const existing = localStorage.getItem(STORAGE_KEY_CARDS);
+  if (existing) {
+    try { isEmpty = JSON.parse(existing).length === 0; } catch { /* ignore */ }
+  }
+  if (isEmpty) saveCards(cards);
+  rebuildTagPool(cards);
+  tagPool = loadTagPool();
+  renderAll();
+  startAnimation();
+}
+
+init();
+</script>
+
+</body>
+</html>
